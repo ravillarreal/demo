@@ -1,0 +1,55 @@
+# apisix.yaml
+routes:
+  - uri: /hello
+    id: 1
+    methods: ["GET", "POST"]
+    upstream_id: 1
+    plugins:
+      grpc-transcode:
+        proto_id: "user_proto"
+        service: "user.UserService"
+        method: "GetUserInfo"
+      serverless-pre-function:
+        phase: access
+        functions:
+          - |
+            return function(conf, ctx)
+              local http = require("resty.http")
+              local httpc = http.new()
+              local store_id = "01KE5QF544HYH1VQQ0MS91JPMP"
+              local res, err = httpc:request_uri("http://openfga:8081/stores/" .. store_id .. "/check", {
+                method = "POST",
+                headers = { ["Content-Type"] = "application/json" },
+                body = "{\"tuple_key\":{\"user\":\"user:" .. (ctx.var.http_x_user_id or "") .. "\",\"relation\":\"member\",\"object\":\"tenant:" .. (ctx.var.http_x_tenant_id or "") .. "\"}}"
+              })
+              if not res or res.status ~= 200 or not string.find(res.body, "true") then
+                ngx.status = 403
+                ngx.header.content_type = "application/json"
+                ngx.say("{\"error\": \"No permission\"}")
+                ngx.exit(403)
+              end
+            end
+
+upstreams:
+  - id: 1
+    type: roundrobin
+    scheme: grpc
+    nodes:
+      "go-app:50051": 1
+
+protos:
+  - id: "user_proto"
+    content: |
+      syntax = "proto3";
+      package user;
+      service UserService {
+        rpc GetUserInfo (UserRequest) returns (UserResponse);
+      }
+      message UserRequest { string id = 1; }
+      message UserResponse { string message = 2; string tenant_id = 3; }
+
+# Secciones requeridas por el validador
+services: []
+consumers: []
+
+#END

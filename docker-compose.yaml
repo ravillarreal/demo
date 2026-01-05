@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_MULTIPLE_DATABASES=zitadel,openfga
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+
+  # ZITADEL - Identidad B2B
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:latest
+    command: ["start-from-init", "--masterkeyFromEnv"]
+    environment:
+      - ZITADEL_MASTERKEY=MasterkeyNeedsToHave32Characters
+      - ZITADEL_DATABASE_POSTGRES_DSN=postgres://postgres:password@db:5432/zitadel?sslmode=disable
+      - ZITADEL_TLS_ENABLED=false
+      - ZITADEL_EXTERNALSECURE=false
+      - ZITADEL_DATABASE_POSTGRES_HOST=db
+      - ZITADEL_DATABASE_POSTGRES_USER=postgres
+      - ZITADEL_DATABASE_POSTGRES_PASSWORD=password
+      - ZITADEL_DATABASE_POSTGRES_DATABASE=zitadel
+      - ZITADEL_DATABASE_POSTGRES_SSL_MODE=disable
+      # Admin credentials (used by init/setup jobs)
+      - ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME=postgres
+      - ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD=password
+      - ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE=disable
+      # Application user credentials (ZITADEL will use these to connect)
+      - ZITADEL_DATABASE_POSTGRES_USER_USERNAME=postgres
+      - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD=password
+      - ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  # OPENFGA - Autorización Fina
+  openfga:
+    image: openfga/openfga:latest
+    command: run
+    environment:
+      - OPENFGA_DATASTORE_ENGINE=postgres
+      - OPENFGA_DATASTORE_URI=postgres://postgres:password@db:5432/openfga?sslmode=disable
+      - OPENFGA_HTTP_ADDR=0.0.0.0:8081
+      - OPENFGA_GRPC_ADDR=0.0.0.0:8082 # Movemos gRPC a otro puerto interno
+    ports:
+      - "8081:8081" # REST API
+      - "8082:8082" # gRPC API
+      - "3000:3000" # Playground
+
+  # APISIX - Gateway
+  apisix:
+    image: apache/apisix:3.9.0-debian
+    volumes:
+      - ./apisix_conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./apisix_conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+    environment:
+      - APISIX_DEPLOYMENT_MODE=standalone
+    user: "root" # Para asegurar que lea los archivos montados sin problemas
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9080:9080" # Tráfico HTTP
+      - "9180:9180" # Admin API (opcional en modo standalone)
+    depends_on:
+      - go-app
+      - openfga
+
+  # TU APP EN GO (Servidor gRPC)
+  go-app:
+    build: .

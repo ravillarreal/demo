@@ -1,0 +1,16 @@
+syntax = "proto3";
+package user;
+option go_package = "./proto";
+
+service UserService {
+  rpc GetUserInfo (UserRequest) returns (UserResponse);
+}
+
+message UserRequest {
+  string id = 1;
+}
+
+message UserResponse {
+  string message = 2;
+  string tenant_id = 3;
+}
