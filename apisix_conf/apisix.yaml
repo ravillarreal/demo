@@ -21,6 +21,17 @@ routes:
     plugins:
       jwt-auth:
         key_claim_name: iss
+      authz-openfga:
+        host: "http://openfga:8081"
+        store_id: 01KEBJWCRJ97CX2BB6KR0BMWXN
+        authorization_model_id: "01KEBJWD6AWXDHB1W4GKPDT1HQ"
+        check:
+          condition: AND
+          tuples:
+            - user_id: claim::sub
+              relation: member
+              object_type: tenant
+              object_id: empresa_a
 
     upstream:
       nodes:
