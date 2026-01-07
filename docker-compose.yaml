@@ -14,6 +14,7 @@ services:
       - "5432:5432"
     volumes:
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
+      - db-data:/var/lib/postgresql/data
 
   # ZITADEL - Identidad B2B
   zitadel:
@@ -37,6 +38,8 @@ services:
       - ZITADEL_DATABASE_POSTGRES_USER_USERNAME=postgres
       - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD=password
       - ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE=disable
+      - ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED=false
+      - ZITADEL_EXTERNALDOMAIN=localhost
     depends_on:
       db:
         condition: service_healthy
@@ -56,13 +59,27 @@ services:
       - "8081:8081" # REST API
       - "8082:8082" # gRPC API
       - "3000:3000" # Playground
+    depends_on:
+      db:
+        condition: service_healthy
 
+  # openfga-migrate:
+  #   image: openfga/openfga:latest
+  #   command: migrate
+  #   environment:
+  #     - OPENFGA_DATASTORE_ENGINE=postgres
+  #     - OPENFGA_DATASTORE_URI=postgres://postgres:password@db:5432/openfga?sslmode=disable
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   restart: "no"
   # APISIX - Gateway
   apisix:
-    image: apache/apisix:3.9.0-debian
+    image: apache/apisix:3.14.1-debian
     volumes:
       - ./apisix_conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ./apisix_conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ./apisix_conf/plugins/authz-openfga.lua:/usr/local/apisix/apisix/plugins/authz-openfga.lua:ro,Z
     environment:
       - APISIX_DEPLOYMENT_MODE=standalone
     user: "root" # Para asegurar que lea los archivos montados sin problemas
@@ -73,10 +90,16 @@ services:
     ports:
       - "9080:9080" # Tráfico HTTP
       - "9180:9180" # Admin API (opcional en modo standalone)
+    extra_hosts:
+      - "localhost:host-gateway"
     depends_on:
       - go-app
       - openfga
+      - zitadel
 
   # TU APP EN GO (Servidor gRPC)
   go-app:
     build: .
+
+volumes:
+  db-data:

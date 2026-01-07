@@ -1,0 +1,16 @@
+name: "Mi Aplicacion"
+
+model: |
+  model
+    schema 1.1
+
+  type user
+
+  type tenant
+    relations
+      define member: [user]
+
+tuples:
+  - user: user:354310871855988741
+    relation: member
+    object: tenant:empresa_a

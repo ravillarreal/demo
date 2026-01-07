@@ -8,9 +8,10 @@ apisix:
   enable_admin: true
 
 plugins:
-  - grpc-transcode
-  - serverless-pre-function
+  - jwt-auth
+  - authz-openfga
 
-# Forzamos a que no intente buscar etcd en absoluto
-etcd:
-  host: []
+nginx_config:
+  http_configuration_snippet: |
+    # Caché necesaria para el plugin authz-openfga
+    lua_shared_dict authz_openfga_authorization_model 1m;
