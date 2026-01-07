@@ -16,9 +16,14 @@ consumers:
           -----END PUBLIC KEY-----
 
 routes:
-  - uri: /get
+  - uri: /hello
     name: "zitadel-openfga-route"
+    methods: ["GET", "POST"]
     plugins:
+      grpc-transcode:
+        proto_id: "user_proto"
+        service: "user.UserService"
+        method: "GetUserInfo"
       jwt-auth:
         key_claim_name: iss
       authz-openfga:
@@ -34,8 +39,20 @@ routes:
               object_id: empresa_a
 
     upstream:
-      nodes:
-        "httpbin.org:80": 1
       type: roundrobin
+      scheme: grpc
+      nodes:
+        "go-app:50051": 1
+
+protos:
+  - id: "user_proto"
+    content: |
+      syntax = "proto3";
+      package user;
+      service UserService {
+        rpc GetUserInfo (UserRequest) returns (UserResponse);
+      }
+      message UserRequest { string id = 1; }
+      message UserResponse { string message = 2; string tenant_id = 3; }
 
 #END
