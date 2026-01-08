@@ -8,9 +8,10 @@ apisix:
   enable_admin: true
 
 plugins:
-  - grpc-transcode
   - jwt-auth
   - authz-openfga
+  - proxy-rewrite
+  - grpc-transcode
   
 
 nginx_config:

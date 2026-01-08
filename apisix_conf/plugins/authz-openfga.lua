@@ -261,6 +261,8 @@ function _M.access(conf, ctx)
     end    
 
     for _, tuple in ipairs(conf.check.tuples) do
+
+        local object_id = core.utils.resolve_var(tuple.object_id, ctx.var)
                 
         -- Only support jwt claim
         local user_jwt_claim = tuple.user_id:gsub("claim::", "")
@@ -280,7 +282,7 @@ function _M.access(conf, ctx)
         local tuple_key = {
             user = tuple.user_type .. ":" .. user_id,
             relation = tuple.relation,
-            object = tuple.object_type .. ":" .. tuple.object_id
+            object = tuple.object_type .. ":" .. object_id
         }
 
         core.log.info("[authz-openfga] tuple: " .. core.json.encode(tuple_key))

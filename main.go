@@ -21,7 +21,9 @@ func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserR
 
 	// Zitadel suele enviar el subject en "x-user-id" o similar tras la validación JWT
 	userID := "unknown"
-	if vals := md.Get("x-user-id"); len(vals) > 0 {
+
+	log.Println("Metadata recibida:", md)
+	if vals := md.Get("X-User-ID"); len(vals) > 0 {
 		userID = vals[0]
 	}
 
@@ -34,7 +36,7 @@ func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserR
 	log.Printf("Petición autorizada para Usuario: %s en Tenant: %s", userID, tenantID)
 
 	return &pb.UserResponse{
-		Message:  "¡Hola desde el backend gRPC de 2026!",
+		Message:  "¡Hola usuario " + userID + " desde el backend gRPC de 2026!",
 		TenantId: tenantID,
 	}, nil
 }

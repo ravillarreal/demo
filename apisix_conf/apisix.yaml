@@ -20,10 +20,6 @@ routes:
     name: "zitadel-openfga-route"
     methods: ["GET", "POST"]
     plugins:
-      grpc-transcode:
-        proto_id: "user_proto"
-        service: "user.UserService"
-        method: "GetUserInfo"
       jwt-auth:
         key_claim_name: iss
       authz-openfga:
@@ -36,7 +32,19 @@ routes:
             - user_id: claim::sub
               relation: member
               object_type: tenant
-              object_id: empresa_a
+              object_id: "$http_x_tenant_id"
+      grpc-transcode:
+        proto_id: "user_proto"
+        service: "user.UserService"
+        method: "GetUserInfo"
+      proxy-rewrite:
+        headers:
+          set:
+            # Pasa el ID del usuario como un header gRPC (metadata)
+            X-User-ID: 1 
+            # O pasa el token completo si el gRPC hará validación local
+            Authorization: "$http_authorization"
+            X-Tenant-ID-CHANGED: "$http_x_tenant_id"
 
     upstream:
       type: roundrobin
