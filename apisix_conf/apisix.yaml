@@ -40,11 +40,8 @@ routes:
       proxy-rewrite:
         headers:
           set:
-            # Pasa el ID del usuario como un header gRPC (metadata)
-            X-User-ID: 1 
-            # O pasa el token completo si el gRPC hará validación local
+            X-User-ID: "$context.auth_claim.sub"
             Authorization: "$http_authorization"
-            X-Tenant-ID-CHANGED: "$http_x_tenant_id"
 
     upstream:
       type: roundrobin
