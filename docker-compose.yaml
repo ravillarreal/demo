@@ -82,6 +82,8 @@ services:
       - ./apisix_conf/plugins/authz-openfga.lua:/usr/local/apisix/apisix/plugins/authz-openfga.lua:ro,Z
     environment:
       - APISIX_DEPLOYMENT_MODE=standalone
+      - APISIX_CLIENT_CERT=${APISIX_CLIENT_CERT}
+      - APISIX_CLIENT_KEY=${APISIX_CLIENT_KEY}
     user: "root" # Para asegurar que lea los archivos montados sin problemas
     ulimits:
       nofile:

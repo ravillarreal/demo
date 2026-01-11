@@ -9,6 +9,15 @@ protoc --include_imports --descriptor_set_out=./proto/user.pb \
 	--go-grpc_out=./proto --go-grpc_opt=paths=source_relative \
 	user.proto
 ```
-
 Ejecutar el comando en la raíz del repositorio (donde está `user.proto`).
 
+# Para iniciar:
+
+1. Ejecutar scripts
+
+```
+cd scripts
+./generate_certs.sh
+./deploy-model.sh
+./run.sh
+```

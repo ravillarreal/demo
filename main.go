@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5" // Librería para manejar JWT
 	pb "github.com/ravillarreal/demo/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 )
@@ -74,15 +78,27 @@ func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserR
 	}, nil
 }
 
-// ... resto del archivo (main) se mantiene igual
-
 func main() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Error al escuchar: %v", err)
 	}
 
-	s := grpc.NewServer()
+	// Cargar el certificado del servidor y la llave privada
+	serverCert, _ := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
+
+	// Cargar la CA para validar el certificado que enviará APISIX
+	certPool := x509.NewCertPool()
+	ca, _ := os.ReadFile("ca.crt")
+	certPool.AppendCertsFromPEM(ca)
+
+	creds := credentials.NewTLS(&tls.Config{
+		ClientAuth:   tls.RequireAndVerifyClientCert, // Fuerza mTLS
+		ClientCAs:    certPool,
+		Certificates: []tls.Certificate{serverCert},
+	})
+
+	s := grpc.NewServer(grpc.Creds(creds))
 	pb.RegisterUserServiceServer(s, &server{})
 
 	// Habilitar reflection es vital para que APISIX pueda leer los métodos gRPC

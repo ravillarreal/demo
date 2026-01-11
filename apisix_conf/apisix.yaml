@@ -48,6 +48,9 @@ routes:
       scheme: grpc
       nodes:
         "go-app:50051": 1
+      tls:
+        client_cert: "${{APISIX_CLIENT_CERT}}"
+        client_key: "${{APISIX_CLIENT_KEY}}"
 
 protos:
   - id: "user_proto"
