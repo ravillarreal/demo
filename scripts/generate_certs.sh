@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuración
-CERT_DIR="../certs"
+CERT_DIR="./certs"
 mkdir -p $CERT_DIR
 
 # 1. Generar la Autoridad Certificadora (Root CA)
@@ -23,7 +23,7 @@ distinguished_name = req_distinguished_name
 req_extensions = v3_req
 prompt = no
 [req_distinguished_name]
-CN = grpc-server
+CN = go-app
 [v3_req]
 keyUsage = keyEncipherment, dataEncipherment
 extendedKeyUsage = serverAuth

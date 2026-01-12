@@ -9,5 +9,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 # Stage 2: Runtime
 FROM gcr.io/distroless/static-debian12
 COPY --from=builder /app/main /
+COPY --from=builder /app/certs /certs
 EXPOSE 50051
 CMD ["/main"]

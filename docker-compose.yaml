@@ -102,6 +102,8 @@ services:
   # TU APP EN GO (Servidor gRPC)
   go-app:
     build: .
+    ports:
+      - "50051:50051"
 
 volumes:
   db-data:

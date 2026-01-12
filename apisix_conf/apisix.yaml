@@ -45,12 +45,13 @@ routes:
 
     upstream:
       type: roundrobin
-      scheme: grpc
+      scheme: grpcs
       nodes:
         "go-app:50051": 1
       tls:
         client_cert: "${{APISIX_CLIENT_CERT}}"
         client_key: "${{APISIX_CLIENT_KEY}}"
+        verify: false
 
 protos:
   - id: "user_proto"

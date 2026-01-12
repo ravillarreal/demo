@@ -78,18 +78,34 @@ func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserR
 	}, nil
 }
 
+func listDirs(path string) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		log.Fatalf("Error leyendo el directorio: %v", err)
+	}
+
+	log.Println("Contenido del directorio", path)
+	for _, entry := range entries {
+		log.Println(" -", entry.Name())
+	}
+}
+
 func main() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Error al escuchar: %v", err)
 	}
 
+	fmt.Println("Listando directorios para debug:")
+
+	listDirs("./certs")
+
 	// Cargar el certificado del servidor y la llave privada
 	serverCert, _ := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
 
 	// Cargar la CA para validar el certificado que enviará APISIX
 	certPool := x509.NewCertPool()
-	ca, _ := os.ReadFile("ca.crt")
+	ca, _ := os.ReadFile("certs/ca.crt")
 	certPool.AppendCertsFromPEM(ca)
 
 	creds := credentials.NewTLS(&tls.Config{
