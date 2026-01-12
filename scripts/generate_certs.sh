@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuración
-CERT_DIR="./certs"
+CERT_DIR="../certs"
 mkdir -p $CERT_DIR
 
 # 1. Generar la Autoridad Certificadora (Root CA)
