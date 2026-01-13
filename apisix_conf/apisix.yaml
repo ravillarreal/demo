@@ -22,6 +22,14 @@ routes:
     plugins:
       jwt-auth:
         key_claim_name: iss
+        store_in_ctx: true
+      serverless-pre-function:
+        phase: "access"
+        functions:
+          - |
+            return function(conf, ctx)
+              ngx.req.set_header("X-User-ID", ctx.jwt_auth_payload.sub)
+            end
       authz-openfga:
         host: "http://openfga:8081"
         store_id: 01KEBJWCRJ97CX2BB6KR0BMWXN
@@ -37,11 +45,6 @@ routes:
         proto_id: "user_proto"
         service: "user.UserService"
         method: "GetUserInfo"
-      proxy-rewrite:
-        headers:
-          set:
-            X-User-ID: "$context.auth_claim.sub"
-            Authorization: "$http_authorization"
 
     upstream:
       type: roundrobin

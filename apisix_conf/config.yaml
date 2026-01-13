@@ -9,10 +9,9 @@ apisix:
 
 plugins:
   - jwt-auth
+  - serverless-pre-function
   - authz-openfga
-  - proxy-rewrite
   - grpc-transcode
-  
 
 nginx_config:
   http_configuration_snippet: |

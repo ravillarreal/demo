@@ -49,19 +49,11 @@ func getSubjectFromJWT(authHeader string) (string, error) {
 
 func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserResponse, error) {
 	md, _ := metadata.FromIncomingContext(ctx)
-	userID := "unknown"
+	fmt.Println("Metadata recibida: ", md)
+	userID := "unknown-user"
 
-	// Obtener el header Authorization
-	if vals := md.Get("authorization"); len(vals) > 0 {
-		authHeader := vals[0]
-
-		// Extraer el 'sub' del JWT
-		sub, err := getSubjectFromJWT(authHeader)
-		if err != nil {
-			log.Printf("Error decodificando JWT: %v", err)
-		} else {
-			userID = sub
-		}
+	if vals := md.Get("x-user-id"); len(vals) > 0 {
+		userID = vals[0]
 	}
 
 	// El Tenant ID se mantiene igual desde el header inyectado
