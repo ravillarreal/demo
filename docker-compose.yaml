@@ -55,6 +55,8 @@ services:
       - OPENFGA_DATASTORE_URI=postgres://postgres:password@db:5432/openfga?sslmode=disable
       - OPENFGA_HTTP_ADDR=0.0.0.0:8081
       - OPENFGA_GRPC_ADDR=0.0.0.0:8082 # Movemos gRPC a otro puerto interno
+    volumes:
+      - ./certs:/certs
     ports:
       - "8081:8081" # REST API
       - "8082:8082" # gRPC API
@@ -95,15 +97,27 @@ services:
     extra_hosts:
       - "localhost:host-gateway"
     depends_on:
-      - go-app
+      - service_a
+      - service_b
       - openfga
       - zitadel
 
   # TU APP EN GO (Servidor gRPC)
-  go-app:
-    build: .
+  service_a:
+    build: ./service_a
+    volumes:
+      - ./certs:/certs:ro
     ports:
       - "50051:50051"
+
+  service_b:
+    build: ./service_b
+    ports:
+      - "50052:50052"
+    volumes:
+      - ./certs:/certs:ro
+    depends_on:
+      - service_a
 
 volumes:
   db-data:

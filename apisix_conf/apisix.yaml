@@ -43,14 +43,14 @@ routes:
               object_id: "$http_x_tenant_id"
       grpc-transcode:
         proto_id: "user_proto"
-        service: "user.UserService"
+        service: "user.v1.UserService"
         method: "GetUserInfo"
 
     upstream:
       type: roundrobin
       scheme: grpcs
       nodes:
-        "go-app:50051": 1
+        "service_b:50052": 1
       tls:
         client_cert: "${{APISIX_CLIENT_CERT}}"
         client_key: "${{APISIX_CLIENT_KEY}}"
@@ -60,7 +60,7 @@ protos:
   - id: "user_proto"
     content: |
       syntax = "proto3";
-      package user;
+      package user.v1;
       service UserService {
         rpc GetUserInfo (UserRequest) returns (UserResponse);
       }

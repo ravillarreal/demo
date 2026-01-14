@@ -8,10 +8,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 
-	"github.com/golang-jwt/jwt/v5" // Librería para manejar JWT
-	pb "github.com/ravillarreal/demo/proto"
+	pb "github.com/ravillarreal/proto-registry/gen/go/user/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -20,31 +18,6 @@ import (
 
 type server struct {
 	pb.UnimplementedUserServiceServer
-}
-
-// Función auxiliar para extraer el "sub" sin verificar la firma
-// (Asumiendo que APISIX ya verificó la firma antes de pasar la petición)
-func getSubjectFromJWT(authHeader string) (string, error) {
-	// 1. Quitar el prefijo "Bearer "
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	if tokenString == authHeader {
-		return "", fmt.Errorf("formato de token inválido")
-	}
-
-	// 2. Parsear el token sin validar firma (Inseguro si no hay un Proxy/Gateway antes)
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
-	if err != nil {
-		return "", err
-	}
-
-	// 3. Extraer el claim "sub"
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		if sub, ok := claims["sub"].(string); ok {
-			return sub, nil
-		}
-	}
-
-	return "", fmt.Errorf("claim 'sub' no encontrado")
 }
 
 func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserResponse, error) {
@@ -93,7 +66,7 @@ func main() {
 	listDirs("./certs")
 
 	// Cargar el certificado del servidor y la llave privada
-	serverCert, _ := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
+	serverCert, _ := tls.LoadX509KeyPair("certs/service_a.crt", "certs/service_a.key")
 
 	// Cargar la CA para validar el certificado que enviará APISIX
 	certPool := x509.NewCertPool()
