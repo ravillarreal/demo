@@ -11,6 +11,6 @@ model: |
       define member: [user]
 
 tuples:
-  - user: user:354310871855988741
+  - user: user:355995900755640324
     relation: member
     object: tenant:empresa_a

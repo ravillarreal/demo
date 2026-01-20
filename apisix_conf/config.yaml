@@ -6,10 +6,11 @@ deployment:
 apisix:
   node_listen: 9080
   enable_admin: true
+  ssl:
+    ssl_trusted_certificate: "/certs/ca.crt"
 
 plugins:
-  - jwt-auth
-  - serverless-pre-function
+  - openid-connect
   - authz-openfga
   - grpc-transcode
 
@@ -20,3 +21,5 @@ nginx_config:
   envs:
     - APISIX_CLIENT_CERT
     - APISIX_CLIENT_KEY
+    - APISIX_OIDC_CLIENT_ID
+    - APISIX_OIDC_CLIENT_SECRET

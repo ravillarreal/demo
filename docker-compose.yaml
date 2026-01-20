@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro,z
       - db-data:/var/lib/postgresql/data
 
   # ZITADEL - Identidad B2B
@@ -49,18 +49,30 @@ services:
   # OPENFGA - Autorización Fina
   openfga:
     image: openfga/openfga:latest
-    command: run
+    command: run --playground-enabled=false --log-level debug
     environment:
       - OPENFGA_DATASTORE_ENGINE=postgres
       - OPENFGA_DATASTORE_URI=postgres://postgres:password@db:5432/openfga?sslmode=disable
       - OPENFGA_HTTP_ADDR=0.0.0.0:8081
       - OPENFGA_GRPC_ADDR=0.0.0.0:8082 # Movemos gRPC a otro puerto interno
+      - OPENFGA_HTTP_TLS_ENABLED=true
+      - OPENFGA_HTTP_TLS_CERT=/certs/openfga.crt
+      - OPENFGA_HTTP_TLS_KEY=/certs/openfga.key
+      # --- AUTENTICACIÓN OIDC ---
+      - OPENFGA_AUTHN_METHOD=oidc
+      - OPENFGA_AUTHN_OIDC_ISSUER=http://localhost:8080
+      - OPENFGA_AUTHN_OIDC_AUDIENCE=356002209726529540
+      - OPENFGA_BOOTSTRAP_TIMEOUT=0
+      - OPENFGA_LOG_LEVEL=debug
+      - OPENFGA_LOG_FORMAT=text
+      - OPENFGA_AUTHN_OIDC_CLIENT_ID_CLAIMS="client_id"
     volumes:
-      - ./certs:/certs
+      - ./certs:/certs:ro,z
+    extra_hosts:
+      - "localhost:host-gateway"
     ports:
       - "8081:8081" # REST API
       - "8082:8082" # gRPC API
-      - "3000:3000" # Playground
     depends_on:
       db:
         condition: service_healthy
@@ -79,23 +91,25 @@ services:
   apisix:
     image: apache/apisix:3.14.1-debian
     volumes:
-      - ./apisix_conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro
-      - ./apisix_conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
-      - ./apisix_conf/plugins/authz-openfga.lua:/usr/local/apisix/apisix/plugins/authz-openfga.lua:ro,Z
+      - ./apisix_conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro,z
+      - ./apisix_conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro,z
+      - ./apisix_conf/plugins/authz-openfga.lua:/usr/local/apisix/apisix/plugins/authz-openfga.lua:ro,z
+      - ./certs:/certs:ro,z
     environment:
       - APISIX_DEPLOYMENT_MODE=standalone
       - APISIX_CLIENT_CERT=${APISIX_CLIENT_CERT}
       - APISIX_CLIENT_KEY=${APISIX_CLIENT_KEY}
-    user: "root" # Para asegurar que lea los archivos montados sin problemas
+      - APISIX_OIDC_CLIENT_ID=${APISIX_OIDC_CLIENT_ID}
+      - APISIX_OIDC_CLIENT_SECRET=${APISIX_OIDC_CLIENT_SECRET}
     ulimits:
       nofile:
         soft: 65536
         hard: 65536
-    ports:
-      - "9080:9080" # Tráfico HTTP
-      - "9180:9180" # Admin API (opcional en modo standalone)
     extra_hosts:
       - "localhost:host-gateway"
+    ports:
+      - "9080:9080" # Tráfico HTTP
+      - "9180:9180" # Admin API (opcional en modo standalone) 
     depends_on:
       - service_a
       - service_b
@@ -106,7 +120,7 @@ services:
   service_a:
     build: ./service_a
     volumes:
-      - ./certs:/certs:ro
+      - ./certs:/certs:ro,z
     ports:
       - "50051:50051"
 
@@ -115,7 +129,7 @@ services:
     ports:
       - "50052:50052"
     volumes:
-      - ./certs:/certs:ro
+      - ./certs:/certs:ro,z
     depends_on:
       - service_a
 

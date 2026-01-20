@@ -6,5 +6,6 @@
 cd scripts
 ./generate_certs.sh
 ./deploy-model.sh
-./run.sh
 ```
+
+luego docker compose up -d

@@ -1,43 +1,24 @@
-consumers:
-  - username: zitadel_user
+plugin_configs:
+  - id: 1
     plugins:
-      jwt-auth:
-        key: "http://localhost:8080"
-        algorithm: RS256
-        public_key: |
-          -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3+nsh/bkOlcIhzdmyOvG
-          0MNfVU2O0zb3WN/nscGZ8K1mNd1s/m2+mudK43pLUDLDpSrjLcO540Jgw0JfsaeQ
-          564HFOn/gQp4NKEqhhN0M4eb61l32LvxXFdVTp4lBlazukBiVzyKTVZ9NcUCKsbx
-          UviCW8osVCkIiRuc+oM1bgVEYYzC64FxxXEYvZM+/8fP28toufmsycX4hZLCdrhC
-          7ldybwaPQVri+5VR/J/PNNxj7VsFmHdCuD8VP6Li9/rKZLJ9QonU6NPCIlk5nLRP
-          3vfgTD6HwkjF4J5LniQev1DmPVtVzP+gy3qVkF9rYmX9sHA3h2ZJfxzUgDyXkORA
-          3wIDAQAB
-          -----END PUBLIC KEY-----
-
-routes:
-  - uri: /hello
-    name: "zitadel-openfga-route"
-    methods: ["GET", "POST"]
-    plugins:
-      jwt-auth:
-        key_claim_name: iss
-        store_in_ctx: true
-      serverless-pre-function:
-        phase: "access"
-        functions:
-          - |
-            return function(conf, ctx)
-              ngx.req.set_header("X-User-ID", ctx.jwt_auth_payload.sub)
-            end
+      openid-connect:
+        client_id: "356002209726529540"
+        client_secret: "${{APISIX_OIDC_CLIENT_SECRET}}"
+        discovery: "http://localhost:8080/.well-known/openid-configuration"
+        bearer_only: true
+        set_userinfo_header: true
       authz-openfga:
-        host: "http://openfga:8081"
-        store_id: 01KEBJWCRJ97CX2BB6KR0BMWXN
-        authorization_model_id: "01KEBJWD6AWXDHB1W4GKPDT1HQ"
+        host: "https://openfga:8081"
+        store_id: 01KF7N5ZQNE364EYZJNJCN8SKK
+        authorization_model_id: "01KF7N602QM1KBNEQJ549TQAC3"
+        client_cert: "${{APISIX_CLIENT_CERT}}"
+        client_key: "${{APISIX_CLIENT_KEY}}"
+        ssl_verify: true
         check:
           condition: AND
           tuples:
             - user_id: claim::sub
+              user_type: user
               relation: member
               object_type: tenant
               object_id: "$http_x_tenant_id"
@@ -46,6 +27,13 @@ routes:
         service: "user.v1.UserService"
         method: "GetUserInfo"
 
+
+
+routes:
+  - uri: /api/v1/*
+    name: "zitadel-openfga-route"
+    methods: ["GET", "POST"]
+    plugin_config_id: 1
     upstream:
       type: roundrobin
       scheme: grpcs

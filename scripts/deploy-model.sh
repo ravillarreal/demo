@@ -1,61 +1,71 @@
 #!/bin/bash
 
+# --- FORZAR ENTORNO PARA FEDORA/PODMAN ---
+export HOME="/home/$(whoami)"
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export USER=$(whoami)
+
+# Rutas de archivos
+BASE_DIR="openfga"
+MODEL_FILE="$BASE_DIR/model.fga.yaml"
+CLEAN_MODEL="$BASE_DIR/model_clean.fga"
+TUPLES_JSON="$BASE_DIR/tuples.json"
+
+# Configuración OpenFGA
 STORE_NAME="Mi_Aplicacion"
-MODEL_FILE="model.fga.yaml" 
 FGA_API_URL="http://localhost:8081"
-IMAGE="openfga/cli:v0.7.8"
+IMAGE_CLI="docker.io/openfga/cli:v0.7.8"
+IMAGE_YQ="docker.io/mikefarah/yq:latest"
 
 echo "🚀 Iniciando despliegue de OpenFGA..."
 
-# 1. Intentar crear el Store
-CREATE_OUT=$(docker run --rm --network=host $IMAGE store create --name "$STORE_NAME" --api-url "$FGA_API_URL" 2>/dev/null)
-STORE_ID=$(echo $CREATE_OUT | jq -r .id)
+# 1. Función para ejecutar comandos de Podman de forma segura
+fga_exec() {
+    # Pasamos las variables de entorno explícitamente al comando
+    podman run --rm --network=host \
+      -e HOME="$HOME" -e XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+      -v "$(pwd):/app:Z" -w /app "$@"
+}
 
-# 2. Si no se creó (porque ya existe), buscar el ID más reciente con ese nombre
-if [ "$STORE_ID" == "null" ] || [ -z "$STORE_ID" ]; then
-    echo "⚠️  El Store ya existe. Recuperando el ID más reciente..."
-    
-    # Explicación: Listamos, filtramos por nombre, ordenamos por fecha y tomamos el último
-    STORE_ID=$(docker run --rm --network=host $IMAGE store list --api-url "$FGA_API_URL" | \
-      jq -r ".stores | map(select(.name == \"$STORE_NAME\")) | sort_by(.created_at) | last | .id")
+# 2. Intentar crear o recuperar el Store
+echo "📦 Verificando Store: $STORE_NAME..."
+CREATE_OUT=$(fga_exec $IMAGE_CLI store create --name "$STORE_NAME" --api-url "$FGA_API_URL" 2>/dev/null)
+STORE_ID=$(echo "$CREATE_OUT" | jq -r .id // empty)
+
+if [ -z "$STORE_ID" ] || [ "$STORE_ID" == "null" ]; then
+    echo "⚠️  El Store ya existe o requiere recuperación. Buscando ID..."
+    LIST_OUT=$(fga_exec $IMAGE_CLI store list --api-url "$FGA_API_URL")
+    STORE_ID=$(echo "$LIST_OUT" | jq -r ".stores | map(select(.name == \"$STORE_NAME\")) | sort_by(.created_at) | last | .id")
 fi
 
-# Validar que ahora sí tenemos un único ULID
+# Validar ULID (formato OpenFGA)
 if [[ ! "$STORE_ID" =~ ^[0-9A-HJKMNP-TV-Z]{26}$ ]]; then
-    echo "❌ Error crítico: No se pudo determinar un Store ID único."
-    echo "Valor obtenido: $STORE_ID"
+    echo "❌ Error: No se pudo obtener un Store ID válido. ¿Está OpenFGA corriendo en $FGA_API_URL?"
     exit 1
 fi
 
-echo "✅ Store ID único detectado: $STORE_ID"
+echo "✅ Store ID detectado: $STORE_ID"
 
-# 3. Escribir el Modelo
-echo "📝 Procesando y escribiendo modelo..."
+# 3. Procesar y escribir el Modelo
+echo "📝 Procesando modelo desde $MODEL_FILE..."
+# Extraemos el contenido DSL (limpiando el formato YAML)
+sed -n '/model: |/,/tuples:/p' "$MODEL_FILE" | grep -v "model: |" | grep -v "tuples:" | sed 's/^  //' > "$CLEAN_MODEL"
 
-# Extraemos el contenido dentro de la etiqueta 'model: |' 
-# Este comando sed busca lo que hay entre 'model: |' y 'tuples:' y limpia la indentación
-sed -n '/model: |/,/tuples:/p' model.fga.yaml | grep -v "model: |" | grep -v "tuples:" | sed 's/^  //' > model_clean.fga
+RESULT=$(fga_exec $IMAGE_CLI model write --store-id "$STORE_ID" --file "$CLEAN_MODEL" --api-url "$FGA_API_URL")
+MODEL_ID=$(echo "$RESULT" | jq -r .authorization_model_id)
 
-# Subimos el archivo limpio
-RESULT=$(docker run --rm --network=host -v "$(pwd):/app" -w /app $IMAGE \
-  model write --store-id "$STORE_ID" --file model_clean.fga --api-url "$FGA_API_URL")
-
-MODEL_ID=$(echo $RESULT | jq -r .authorization_model_id)
-
-if [ "$MODEL_ID" == "null" ] || [ -z "$MODEL_ID" ]; then
-    echo "❌ Error al escribir el modelo. Revisa model_clean.fga"
+if [ -z "$MODEL_ID" ] || [ "$MODEL_ID" == "null" ]; then
+    echo "❌ Error al escribir el modelo. Revisa $CLEAN_MODEL"
     exit 1
 fi
 
 # 4. Subir las Tuplas
-echo "      Subiendo tuplas iniciales..."
+echo "📊 Extrayendo tuplas..."
+# Usamos yq para generar el JSON temporal
+podman run --rm -v "$(pwd):/app:Z" -w /app $IMAGE_YQ eval '.tuples' "$MODEL_FILE" -o json > "$TUPLES_JSON"
 
-# Extraemos solo la lista de tuplas y la convertimos a un JSON temporal que el CLI entienda
-# Usamos jq para extraer el array que está bajo la clave 'tuples'
-docker run --rm -v "$(pwd):/app" -w /app mikefarah/yq eval '.tuples' model.fga.yaml -o json > tuples.json
-
-docker run --rm --network=host -v "$(pwd):/app" -w /app $IMAGE \
-  tuple write --store-id "$STORE_ID" --file tuples.json --api-url "$FGA_API_URL"
+echo "📤 Subiendo tuplas al Store..."
+fga_exec $IMAGE_CLI tuple write --store-id "$STORE_ID" --file "$TUPLES_JSON" --api-url "$FGA_API_URL"
 
 echo "------------------------------------------------"
 echo "🎉 CONFIGURACIÓN COMPLETADA"
