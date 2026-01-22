@@ -18,8 +18,3 @@ nginx_config:
   http_configuration_snippet: |
     # Caché necesaria para el plugin authz-openfga
     lua_shared_dict authz_openfga_authorization_model 1m;
-  envs:
-    - APISIX_CLIENT_CERT
-    - APISIX_CLIENT_KEY
-    - APISIX_OIDC_CLIENT_ID
-    - APISIX_OIDC_CLIENT_SECRET
