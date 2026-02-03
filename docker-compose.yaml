@@ -1,4 +1,42 @@
 services:
+  # STEP-CA - Internal Certificate Authority
+  step-ca:
+    image: smallstep/step-ca:latest
+    volumes:
+      - step-ca-data:/home/step:rw
+      - ./certs:/certs:rw,z
+    environment:
+      - DOCKER_STEPCA_INIT_NAME=DemoInternalCA
+      - DOCKER_STEPCA_INIT_DNS_NAMES=step-ca,localhost
+      - DOCKER_STEPCA_INIT_PROVISIONER_NAME=admin
+      - DOCKER_STEPCA_INIT_PASSWORD=${STEP_CA_PASSWORD:-changeme}
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "step", "ca", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # STEP-RENEWER - Automatic Certificate Renewal
+  step-renewer:
+    build: ./step-renewer
+    volumes:
+      - ./certs:/certs:rw,z
+      - step-ca-data:/step-ca-config:ro
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/podman.sock:ro
+      - ./.env:/env/.env:rw
+    environment:
+      - STEP_CA_URL=https://step-ca:9000
+      - STEP_CA_PASSWORD=${STEP_CA_PASSWORD:-changeme}
+      - RENEWAL_THRESHOLD_HOURS=6
+      - CERT_VALIDITY_HOURS=24
+      # Tell docker-cli to use Podman socket
+      - DOCKER_HOST=unix:///var/run/podman.sock
+    depends_on:
+      step-ca:
+        condition: service_healthy
+
   db:
     image: postgres:16-alpine
     environment:
@@ -135,3 +173,4 @@ services:
 
 volumes:
   db-data:
+  step-ca-data:
