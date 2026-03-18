@@ -5,3 +5,4 @@ certs/*.csr
 certs/*.srl
 # Ignorar el archivo de variables reales
 .env
+frontent/node_modules

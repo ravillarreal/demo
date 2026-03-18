@@ -61,19 +61,24 @@ func main() {
 		log.Fatalf("Error al escuchar: %v", err)
 	}
 
-	fmt.Println("Listando directorios para debug:")
-
-	listDirs("./certs")
-
 	// Cargar el certificado del servidor y la llave privada
-	serverCert, _ := tls.LoadX509KeyPair("certs/service_a.crt", "certs/service_a.key")
+	serverCert, err := tls.LoadX509KeyPair("certs/service_a.crt", "certs/service_a.key")
+	if err != nil {
+		log.Fatalf("No se pudo cargar el certificado de service_a: %v", err)
+	}
 
 	// Cargar la CA para validar el certificado que enviará APISIX
 	certPool := x509.NewCertPool()
-	ca, _ := os.ReadFile("certs/ca.crt")
-	certPool.AppendCertsFromPEM(ca)
+	ca, err := os.ReadFile("certs/ca.crt")
+	if err != nil {
+		log.Fatalf("No se pudo leer la CA: %v", err)
+	}
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		log.Fatalf("No se pudo agregar la CA al pool")
+	}
 
 	creds := credentials.NewTLS(&tls.Config{
+		MinVersion:   tls.VersionTLS13,
 		ClientAuth:   tls.RequireAndVerifyClientCert, // Fuerza mTLS
 		ClientCAs:    certPool,
 		Certificates: []tls.Certificate{serverCert},

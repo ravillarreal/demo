@@ -62,13 +62,19 @@ func loadTLSCredentials(isServer bool) credentials.TransportCredentials {
 	}
 
 	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{cert},
-		RootCAs:      capool, // Para validar a Service A como cliente
-		ClientCAs:    capool, // Para validar a quien llame a Service B como servidor
+		RootCAs:      capool,
+		ClientCAs:    nil,
 	}
 
 	if isServer {
+		// Aceptar solo clientes firmados por nuestra CA
+		tlsConfig.ClientCAs = capool
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	} else {
+		// Validar el nombre del servidor de Service A frente al SAN del certificado
+		tlsConfig.ServerName = "service_a"
 	}
 
 	return credentials.NewTLS(tlsConfig)

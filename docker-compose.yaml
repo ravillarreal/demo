@@ -39,7 +39,7 @@ services:
       - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD=password
       - ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE=disable
       - ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED=false
-      - ZITADEL_EXTERNALDOMAIN=localhost
+      - ZITADEL_EXTERNALDOMAIN=zitadel
     depends_on:
       db:
         condition: service_healthy
@@ -55,39 +55,28 @@ services:
       - OPENFGA_DATASTORE_URI=postgres://postgres:password@db:5432/openfga?sslmode=disable
       - OPENFGA_HTTP_ADDR=0.0.0.0:8081
       - OPENFGA_GRPC_ADDR=0.0.0.0:8082 # Movemos gRPC a otro puerto interno
-      - OPENFGA_HTTP_TLS_ENABLED=true
+      - OPENFGA_HTTP_TLS_ENABLED=false
       - OPENFGA_HTTP_TLS_CERT=/certs/openfga.crt
       - OPENFGA_HTTP_TLS_KEY=/certs/openfga.key
       # --- AUTENTICACIÓN OIDC ---
       - OPENFGA_AUTHN_METHOD=oidc
-      - OPENFGA_AUTHN_OIDC_ISSUER=http://localhost:8080
-      - OPENFGA_AUTHN_OIDC_AUDIENCE=${APISIX_OIDC_CLIENT_ID}
+      - OPENFGA_AUTHN_OIDC_ISSUER=http://zitadel:8080
+      - OPENFGA_AUTHN_OIDC_AUDIENCE="364572077241466886"
       - OPENFGA_BOOTSTRAP_TIMEOUT=0
       - OPENFGA_LOG_LEVEL=debug
       - OPENFGA_LOG_FORMAT=text
       - OPENFGA_AUTHN_OIDC_CLIENT_ID_CLAIMS="client_id"
     volumes:
       - ./certs:/certs:ro,z
-    extra_hosts:
-      - "localhost:host-gateway"
     ports:
       - "8081:8081" # REST API
       - "8082:8082" # gRPC API
     depends_on:
       db:
         condition: service_healthy
+      zitadel:
+        condition: service_started
 
-  # openfga-migrate:
-  #   image: openfga/openfga:latest
-  #   command: migrate
-  #   environment:
-  #     - OPENFGA_DATASTORE_ENGINE=postgres
-  #     - OPENFGA_DATASTORE_URI=postgres://postgres:password@db:5432/openfga?sslmode=disable
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   restart: "no"
-  # APISIX - Gateway
   apisix:
     image: apache/apisix:3.14.1-debian
     volumes:

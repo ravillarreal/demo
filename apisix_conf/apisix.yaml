@@ -2,9 +2,9 @@ plugin_configs:
   - id: 1
     plugins:
       openid-connect:
-        client_id: "356002209726529540"
-        client_secret: "${{APISIX_OIDC_CLIENT_SECRET}}"
-        discovery: "http://localhost:8080/.well-known/openid-configuration"
+        client_id: "364550332879011846"
+        client_secret: "bqokZ5j1sWhZZtjySfXOcznylN7cpHVUaSQWB7wf1FEBN1GbFNrmvDWyhBjle4us"
+        discovery: "http://zitadel:8080/.well-known/openid-configuration"
         bearer_only: true
         set_userinfo_header: true
       authz-openfga:
@@ -30,7 +30,7 @@ plugin_configs:
 
 
 routes:
-  - uri: /api/v1/*
+  - uri: /api/v1/hello
     name: "zitadel-openfga-route"
     methods: ["GET", "POST"]
     plugin_config_id: 1

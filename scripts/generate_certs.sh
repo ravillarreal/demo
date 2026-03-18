@@ -2,9 +2,14 @@
 mkdir -p certs
 cd certs
 
-# 1. Generar la CA (Autoridad Certificadora)
-openssl genrsa -out ca.key 2048
-openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/CN=MyInternalCA"
+# 1. Generar la CA (Autoridad Certificadora) si no existe
+if [ ! -f ca.key ] || [ ! -f ca.crt ]; then
+  echo "Generando CA interna..."
+  openssl genrsa -out ca.key 2048
+  openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/CN=MyInternalCA"
+else
+  echo "CA existente encontrada, reutilizando ca.crt y ca.key"
+fi
 
 # Función para generar certs con SAN (Subject Alternative Names)
 generate_cert() {
