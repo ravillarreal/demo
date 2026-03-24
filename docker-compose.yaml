@@ -21,25 +21,19 @@ services:
     image: ghcr.io/zitadel/zitadel:latest
     command: ["start-from-init", "--masterkeyFromEnv"]
     environment:
+      - LOG_LEVEL=debug
       - ZITADEL_MASTERKEY=MasterkeyNeedsToHave32Characters
       - ZITADEL_DATABASE_POSTGRES_DSN=postgres://postgres:password@db:5432/zitadel?sslmode=disable
       - ZITADEL_TLS_ENABLED=false
       - ZITADEL_EXTERNALSECURE=false
       - ZITADEL_DATABASE_POSTGRES_HOST=db
-      - ZITADEL_DATABASE_POSTGRES_USER=postgres
-      - ZITADEL_DATABASE_POSTGRES_PASSWORD=password
-      - ZITADEL_DATABASE_POSTGRES_DATABASE=zitadel
       - ZITADEL_DATABASE_POSTGRES_SSL_MODE=disable
-      # Admin credentials (used by init/setup jobs)
       - ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME=postgres
       - ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD=password
-      - ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE=disable
-      # Application user credentials (ZITADEL will use these to connect)
       - ZITADEL_DATABASE_POSTGRES_USER_USERNAME=postgres
       - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD=password
-      - ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE=disable
-      - ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED=false
       - ZITADEL_EXTERNALDOMAIN=zitadel
+      - ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED=true
     depends_on:
       db:
         condition: service_healthy
@@ -49,23 +43,22 @@ services:
   # OPENFGA - Autorización Fina
   openfga:
     image: openfga/openfga:latest
-    command: run --playground-enabled=false --log-level debug
+    command: >
+      sh -c "openfga migrate && openfga run --playground-enabled=false --log-level debug"
     environment:
       - OPENFGA_DATASTORE_ENGINE=postgres
       - OPENFGA_DATASTORE_URI=postgres://postgres:password@db:5432/openfga?sslmode=disable
       - OPENFGA_HTTP_ADDR=0.0.0.0:8081
       - OPENFGA_GRPC_ADDR=0.0.0.0:8082 # Movemos gRPC a otro puerto interno
-      - OPENFGA_HTTP_TLS_ENABLED=false
-      - OPENFGA_HTTP_TLS_CERT=/certs/openfga.crt
-      - OPENFGA_HTTP_TLS_KEY=/certs/openfga.key
       # --- AUTENTICACIÓN OIDC ---
       - OPENFGA_AUTHN_METHOD=oidc
       - OPENFGA_AUTHN_OIDC_ISSUER=http://zitadel:8080
-      - OPENFGA_AUTHN_OIDC_AUDIENCE="364572077241466886"
-      - OPENFGA_BOOTSTRAP_TIMEOUT=0
-      - OPENFGA_LOG_LEVEL=debug
-      - OPENFGA_LOG_FORMAT=text
-      - OPENFGA_AUTHN_OIDC_CLIENT_ID_CLAIMS="client_id"
+      - OPENFGA_AUTHN_OIDC_AUDIENCE=openfga
+      # - OPENFGA_HTTP_TLS_ENABLED=true
+      # - OPENFGA_HTTP_TLS_CERT=/certs/openfga.crt
+      # - OPENFGA_HTTP_TLS_KEY=/certs/openfga.key
+      # - OPENFGA_LOG_FORMAT=text
+      - OPENFGA_AUTHN_OIDC_CLIENT_ID_CLAIMS=client_id
     volumes:
       - ./certs:/certs:ro,z
     ports:
@@ -76,6 +69,23 @@ services:
         condition: service_healthy
       zitadel:
         condition: service_started
+
+  openfga-setup:
+    build: ./openfga
+    environment:
+      - FGA_API_URL=http://openfga:8081
+      - FGA_API_TOKEN_ISSUER=http://zitadel:8080
+      - FGA_API_AUDIENCE=openfga
+      - FGA_CLIENT_ID=${FGA_CLIENT_ID}
+      - FGA_CLIENT_SECRET=${FGA_CLIENT_SECRET}
+    volumes:
+      - ./openfga:/openfga:ro,z
+    depends_on:
+      openfga:
+        condition: service_started
+      zitadel:
+        condition: service_started
+    restart: "no"
 
   apisix:
     image: apache/apisix:3.14.1-debian
@@ -112,6 +122,9 @@ services:
       - ./certs:/certs:ro,z
     ports:
       - "50051:50051"
+    depends_on:
+      openfga-setup:
+        condition: service_completed_successfully
 
   service_b:
     build: ./service_b
@@ -120,7 +133,10 @@ services:
     volumes:
       - ./certs:/certs:ro,z
     depends_on:
-      - service_a
+      service_a:
+        condition: service_started
+      openfga-setup:
+        condition: service_completed_successfully
 
 volumes:
   db-data:
