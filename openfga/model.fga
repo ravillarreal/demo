@@ -1,0 +1,14 @@
+model
+  schema 1.1
+
+type user
+
+type organization
+  relations
+    define admin: [user]
+    define member: [user] or admin
+
+type service
+  relations
+    define owner: [organization]
+    define can_call: member from owner

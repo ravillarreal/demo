@@ -1,0 +1,73 @@
+name: B2B Authorization Model Tests
+model: |
+  model
+    schema 1.1
+
+  type user
+
+  type organization
+    relations
+      define admin: [user]
+      define member: [user] or admin
+
+  type service
+    relations
+      define owner: [organization]
+      define can_call: member from owner
+
+tuples:
+  - user: user:alice
+    relation: admin
+    object: organization:acme
+  - user: user:bob
+    relation: member
+    object: organization:acme
+  - user: user:charlie
+    relation: member
+    object: organization:other-corp
+  - user: organization:acme
+    relation: owner
+    object: service:service_a
+  - user: organization:acme
+    relation: owner
+    object: service:service_b
+
+tests:
+  - name: alice (admin de acme) puede llamar service_a
+    check:
+      - user: user:alice
+        object: service:service_a
+        assertions:
+          can_call: true
+
+  - name: bob (member de acme) puede llamar service_a
+    check:
+      - user: user:bob
+        object: service:service_a
+        assertions:
+          can_call: true
+
+  - name: bob (member de acme) puede llamar service_b
+    check:
+      - user: user:bob
+        object: service:service_b
+        assertions:
+          can_call: true
+
+  - name: charlie (otra org) no puede llamar service_a
+    check:
+      - user: user:charlie
+        object: service:service_a
+        assertions:
+          can_call: false
+
+  - name: usuario desconocido no puede llamar ningun servicio
+    check:
+      - user: user:unknown
+        object: service:service_a
+        assertions:
+          can_call: false
+      - user: user:unknown
+        object: service:service_b
+        assertions:
+          can_call: false
