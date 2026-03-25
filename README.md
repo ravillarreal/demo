@@ -10,13 +10,6 @@ cd scripts
 
 luego docker compose up -d
 
-
-# Comandos comunes
-
-```
-docker run --rm --network demo_default openfga/cli store list --debug --api-url "http://openfga:8081" --api-token-issuer "http://zitadel:8080/oauth/v2/token" --client-id "openfga" --client-secret "Kp20HSEDsywLrtqxizQojMRfNFaS7HuXfAtZQIPMwouf7RbpQH4qOWgaeMPiJHIs" --api-scopes "asd"
-```
-
-```
-docker run --rm --network demo_default curlimages/curl http://openfga:8081
-```
+# Que falta:
+- Entender los scopes de Zitadel y usarlos para hacer Coarse grained autorization para denegar rutas sin ir a openfga.
+- Implementar arquitectura limpia que desacople autorización fina de lógica de negocio en Go para microservicios.
