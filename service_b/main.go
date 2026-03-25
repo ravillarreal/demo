@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -24,6 +25,19 @@ func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserR
 	md, ok := metadata.FromIncomingContext(ctx)
 
 	fmt.Println("Metadata recibida: ", md)
+
+	if xuserinfo := md.Get("x-userinfo"); len(xuserinfo) > 0 {
+		decoded, err := base64.StdEncoding.DecodeString(xuserinfo[0])
+		if err != nil {
+			decoded, err = base64.RawStdEncoding.DecodeString(xuserinfo[0])
+		}
+		if err == nil {
+			log.Printf("x-userinfo decodificado: %s", string(decoded))
+		} else {
+			log.Printf("Error decodificando x-userinfo: %v", err)
+		}
+	}
+
 	if !ok {
 		md = metadata.New(nil)
 	}
