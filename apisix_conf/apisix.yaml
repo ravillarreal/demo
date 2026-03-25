@@ -2,32 +2,15 @@ plugin_configs:
   - id: 1
     plugins:
       openid-connect:
-        client_id: "364550332879011846"
-        client_secret: "bqokZ5j1sWhZZtjySfXOcznylN7cpHVUaSQWB7wf1FEBN1GbFNrmvDWyhBjle4us"
+        client_id: "365615904601407492"
+        client_secret: "cepPBoOJ5ecZOU67LxtfYQQvBQd0Vh0veAOE71egdNb2VwqVNtVF1rTMg0vPdMHv"
         discovery: "http://zitadel:8080/.well-known/openid-configuration"
+        introspection_endpoint: "http://zitadel:8080/oauth/v2/introspect"
         bearer_only: true
-        set_userinfo_header: true
-      authz-openfga:
-        host: "https://openfga:8081"
-        store_id: 01KF7N5ZQNE364EYZJNJCN8SKK
-        authorization_model_id: "01KF7N602QM1KBNEQJ549TQAC3"
-        client_cert: "${{APISIX_CLIENT_CERT}}"
-        client_key: "${{APISIX_CLIENT_KEY}}"
-        ssl_verify: true
-        check:
-          condition: AND
-          tuples:
-            - user_id: claim::sub
-              user_type: user
-              relation: member
-              object_type: tenant
-              object_id: "$http_x_tenant_id"
       grpc-transcode:
         proto_id: "user_proto"
         service: "user.v1.UserService"
         method: "GetUserInfo"
-
-
 
 routes:
   - uri: /api/v1/hello
@@ -36,13 +19,9 @@ routes:
     plugin_config_id: 1
     upstream:
       type: roundrobin
-      scheme: grpcs
+      scheme: grpc
       nodes:
         "service_b:50052": 1
-      tls:
-        client_cert: "${{APISIX_CLIENT_CERT}}"
-        client_key: "${{APISIX_CLIENT_KEY}}"
-        verify: false
 
 protos:
   - id: "user_proto"

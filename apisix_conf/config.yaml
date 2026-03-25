@@ -6,15 +6,13 @@ deployment:
 apisix:
   node_listen: 9080
   enable_admin: true
-  ssl:
-    ssl_trusted_certificate: "/certs/ca.crt"
 
 plugins:
   - openid-connect
-  - authz-openfga
   - grpc-transcode
 
 nginx_config:
   http_configuration_snippet: |
     # Caché necesaria para el plugin authz-openfga
     lua_shared_dict authz_openfga_authorization_model 1m;
+  error_log_level: "debug"

@@ -2,16 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"log"
 	"net"
-	"os"
 
 	pb "github.com/ravillarreal/proto-registry/gen/go/user/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 )
@@ -43,48 +39,13 @@ func (s *server) GetUserInfo(ctx context.Context, in *pb.UserRequest) (*pb.UserR
 	}, nil
 }
 
-func listDirs(path string) {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		log.Fatalf("Error leyendo el directorio: %v", err)
-	}
-
-	log.Println("Contenido del directorio", path)
-	for _, entry := range entries {
-		log.Println(" -", entry.Name())
-	}
-}
-
 func main() {
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("Error al escuchar: %v", err)
 	}
 
-	// Cargar el certificado del servidor y la llave privada
-	serverCert, err := tls.LoadX509KeyPair("certs/service_a.crt", "certs/service_a.key")
-	if err != nil {
-		log.Fatalf("No se pudo cargar el certificado de service_a: %v", err)
-	}
-
-	// Cargar la CA para validar el certificado que enviará APISIX
-	certPool := x509.NewCertPool()
-	ca, err := os.ReadFile("certs/ca.crt")
-	if err != nil {
-		log.Fatalf("No se pudo leer la CA: %v", err)
-	}
-	if ok := certPool.AppendCertsFromPEM(ca); !ok {
-		log.Fatalf("No se pudo agregar la CA al pool")
-	}
-
-	creds := credentials.NewTLS(&tls.Config{
-		MinVersion:   tls.VersionTLS13,
-		ClientAuth:   tls.RequireAndVerifyClientCert, // Fuerza mTLS
-		ClientCAs:    certPool,
-		Certificates: []tls.Certificate{serverCert},
-	})
-
-	s := grpc.NewServer(grpc.Creds(creds))
+	s := grpc.NewServer()
 	pb.RegisterUserServiceServer(s, &server{})
 
 	// Habilitar reflection es vital para que APISIX pueda leer los métodos gRPC

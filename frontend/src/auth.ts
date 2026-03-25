@@ -1,5 +1,5 @@
-const ZITADEL_ISSUER = 'http://localhost:8080'; // tu Zitadel local dentro de docker mapeado al host
-const CLIENT_ID = '364456014759657475'; // puedes crear otro client_id específico para SPA
+const ZITADEL_ISSUER = 'http://zitadel:8080'; // tu Zitadel local dentro de docker mapeado al host
+const CLIENT_ID = '365571974988103684'; // puedes crear otro client_id específico para SPA
 const REDIRECT_URI = 'http://localhost:5173/callback';
 const SCOPES = 'openid profile email';
 
