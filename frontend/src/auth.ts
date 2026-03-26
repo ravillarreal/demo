@@ -1,7 +1,7 @@
 const ZITADEL_ISSUER = 'http://zitadel:8080'; // tu Zitadel local dentro de docker mapeado al host
 const CLIENT_ID = '365571974988103684'; // puedes crear otro client_id específico para SPA
 const REDIRECT_URI = 'http://localhost:5173/callback';
-const SCOPES = 'openid profile email';
+const SCOPES = 'openid profile email urn:zitadel:iam:user:resourceowner';
 
 function base64UrlEncode(buffer: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))

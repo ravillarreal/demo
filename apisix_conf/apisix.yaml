@@ -6,6 +6,8 @@ plugin_configs:
         client_secret: "${{APISIX_CLIENT_SECRET}}"
         discovery: "http://zitadel:8080/.well-known/openid-configuration"
         introspection_endpoint: "http://zitadel:8080/oauth/v2/introspect"
+        set_access_token_header: false
+        set_id_token_header: false
         bearer_only: true
       grpc-transcode:
         proto_id: "user_proto"
