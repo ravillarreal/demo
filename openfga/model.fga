@@ -6,9 +6,41 @@ type user
 type organization
   relations
     define admin: [user]
-    define member: [user] or admin
+    define hr_manager: [user]
+    define employee: [user]
+    define member: [user] or admin or hr_manager or employee
 
-type service
+type department
   relations
-    define can_call: member from owner
-    define owner: [organization]
+    define organization: [organization]
+    define manager: [user] or hr_manager from organization
+    define employee: [user]
+    define member: [user] or manager or employee
+    define hr_access: hr_manager from organization or manager
+
+type employee_record
+  relations
+    define organization: [organization]
+    define employee: [user]
+    define manager: [user]
+    define hr_access: hr_manager from organization
+    define can_view: employee or manager or hr_access or admin from organization
+    define can_edit: manager or hr_access or admin from organization
+    define can_approve_leave: manager or hr_access or admin from organization
+
+type timesheet
+  relations
+    define organization: [organization]
+    define employee: [user]
+    define manager: [user]
+    define hr_access: hr_manager from organization
+    define can_submit: employee
+    define can_view: employee or manager or hr_access or admin from organization
+    define can_approve: manager or hr_access or admin from organization
+
+type payroll
+  relations
+    define organization: [organization]
+    define hr_access: hr_manager from organization
+    define can_view: hr_access or admin from organization
+    define can_process: hr_access or admin from organization

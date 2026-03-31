@@ -1,4 +1,4 @@
-name: B2B Authorization Model Tests
+name: B2B HR SaaS Authorization Model Tests
 model: |
   model
     schema 1.1
@@ -8,66 +8,185 @@ model: |
   type organization
     relations
       define admin: [user]
-      define member: [user] or admin
+      define hr_manager: [user]
+      define employee: [user]
+      define member: [user] or admin or hr_manager or employee
 
-  type service
+  type department
     relations
-      define owner: [organization]
-      define can_call: member from owner
+      define organization: [organization]
+      define manager: [user] or hr_manager from organization
+      define employee: [user]
+      define member: [user] or manager or employee
+      define hr_access: hr_manager from organization or manager
+
+  type employee_record
+    relations
+      define organization: [organization]
+      define employee: [user]
+      define manager: [user]
+      define hr_access: hr_manager from organization
+      define can_view: employee or manager or hr_access or admin from organization
+      define can_edit: manager or hr_access or admin from organization
+      define can_approve_leave: manager or hr_access or admin from organization
+
+  type timesheet
+    relations
+      define organization: [organization]
+      define employee: [user]
+      define manager: [user]
+      define hr_access: hr_manager from organization
+      define can_submit: employee
+      define can_view: employee or manager or hr_access or admin from organization
+      define can_approve: manager or hr_access or admin from organization
+
+  type payroll
+    relations
+      define organization: [organization]
+      define hr_access: hr_manager from organization
+      define can_view: hr_access or admin from organization
+      define can_process: hr_access or admin from organization
 
 tuples:
   - user: user:alice
     relation: admin
     object: organization:acme
-  - user: user:bob
-    relation: member
+
+  - user: user:diana
+    relation: hr_manager
     object: organization:acme
-  - user: user:charlie
-    relation: member
-    object: organization:other-corp
+
+  - user: user:bob
+    relation: employee
+    object: organization:acme
+
+  - user: user:bob
+    relation: employee
+    object: department:payroll
+
+  - user: user:carol
+    relation: employee
+    object: organization:acme
+
+  - user: user:carol
+    relation: manager
+    object: department:engineering
+
   - user: organization:acme
-    relation: owner
-    object: service:service_a
+    relation: organization
+    object: department:engineering
+
+  - user: user:bob
+    relation: employee
+    object: employee_record:bob
+
+  - user: user:carol
+    relation: manager
+    object: employee_record:bob
+
+  - user: user:bob
+    relation: employee
+    object: timesheet:bob-week1
+
   - user: organization:acme
-    relation: owner
-    object: service:service_b
+    relation: organization
+    object: timesheet:bob-week1
+
+  - user: organization:acme
+    relation: organization
+    object: payroll:acme-2026-03
+
+  - user: organization:acme
+    relation: organization
+    object: employee_record:bob
+
+  - user: user:carol
+    relation: manager
+    object: timesheet:bob-week1
+
+
 
 tests:
-  - name: alice (admin de acme) puede llamar service_a
+  - name: admin puede ver y procesar payroll
     check:
       - user: user:alice
-        object: service:service_a
+        object: payroll:acme-2026-03
         assertions:
-          can_call: true
+          can_view: true
+          can_process: true
 
-  - name: bob (member de acme) puede llamar service_a
+  - name: hr_manager puede ver y procesar payroll
+    check:
+      - user: user:diana
+        object: payroll:acme-2026-03
+        assertions:
+          can_view: true
+          can_process: true
+
+  - name: employee no puede ver payroll
     check:
       - user: user:bob
-        object: service:service_a
+        object: payroll:acme-2026-03
         assertions:
-          can_call: true
+          can_view: false
+          can_process: false
 
-  - name: bob (member de acme) puede llamar service_b
+  - name: manager ve y aprueba timesheet del empleado
+    check:
+      - user: user:carol
+        object: timesheet:bob-week1
+        assertions:
+          can_view: true
+          can_approve: true
+
+  - name: employee puede ver y enviar su timesheet, pero no aprobarlo
     check:
       - user: user:bob
-        object: service:service_b
+        object: timesheet:bob-week1
         assertions:
-          can_call: true
+          can_view: true
+          can_submit: true
+          can_approve: false
 
-  - name: charlie (otra org) no puede llamar service_a
+  - name: hr_manager puede ver y aprobar timesheet del empleado
     check:
-      - user: user:charlie
-        object: service:service_a
+      - user: user:diana
+        object: timesheet:bob-week1
         assertions:
-          can_call: false
+          can_view: true
+          can_approve: true
 
-  - name: usuario desconocido no puede llamar ningun servicio
+  - name: manager puede ver registro de empleado y aprobar licencias
     check:
-      - user: user:unknown
-        object: service:service_a
+      - user: user:carol
+        object: employee_record:bob
         assertions:
-          can_call: false
-      - user: user:unknown
-        object: service:service_b
+          can_view: true
+          can_edit: true
+          can_approve_leave: true
+
+  - name: employee puede ver su propio registro pero no editar otro
+    check:
+      - user: user:bob
+        object: employee_record:bob
         assertions:
-          can_call: false
+          can_view: true
+          can_edit: false
+
+  - name: otro empleado no puede ver o editar registro ajeno
+    check:
+      - user: user:frank
+        object: employee_record:bob
+        assertions:
+          can_view: false
+          can_edit: false
+          can_approve_leave: false
+
+  - name: usuario externo sin rol no puede acceder
+    check:
+      - user: user:eve
+        object: employee_record:bob
+        assertions:
+          can_view: false
+          can_edit: false
+          can_approve_leave: false
