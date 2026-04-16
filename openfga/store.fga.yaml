@@ -1,0 +1,79 @@
+name: Epa
+model_file: model.fga
+
+tuples:
+  - user: organization:acme
+    relation: organization
+    object: department:engineering
+
+  - user: department:engineering#employee
+    relation: employee
+    object: organization:acme
+  
+  - user: organization:acme
+    relation: organization
+    object: department:sales
+  
+  - user: department:sales#employee
+    relation: employee
+    object: organization:acme
+
+  - user: user:charlie
+    relation: hr_manager
+    object: organization:acme
+  
+  - user: user:matilda
+    relation: hr_manager
+    object: department:engineering
+
+  - user: user:alice
+    relation: employee
+    object: department:engineering
+
+  - user: user:diana
+    relation: employee
+    object: department:sales
+
+  - user: user:alice
+    relation: employee
+    object: employee_payment:alice_payment
+  
+  - user: department:engineering
+    relation: department
+    object: employee_payment:alice_payment
+
+tests:
+  - name: HR manager can create payment for employees of their department
+    check:
+      - user: user:matilda
+        object: department:engineering
+        assertions:
+          hr_access: true
+
+  - name: Employees can view their own payment
+    check:
+      - user: user:alice
+        object: employee_payment:alice_payment
+        assertions:
+          can_view: true
+  
+  - name: Employees cannot change their own payment
+    check:
+      - user: user:alice
+        object: employee_payment:alice_payment
+        assertions:
+          can_change: false
+  
+  - name: HR manager can change payment for employees of their department
+    check:
+      - user: user:matilda
+        object: employee_payment:alice_payment
+        assertions:
+          can_change: true
+  
+  - name: Organization HR manager can change any employees payment
+    check:
+      - user: user:charlie
+        object: employee_payment:alice_payment
+        assertions:
+          can_change: true
