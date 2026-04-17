@@ -3,7 +3,7 @@ set -e
 
 STORE_NAME="${FGA_STORE_NAME:-demo}"
 MODEL_FILE="/openfga/model.fga"
-TESTS_FILE="/openfga/model.fga.yaml"
+TESTS_FILE="/openfga/store.fga.yaml"
 
 AUTH_ARGS="--api-url ${FGA_API_URL} \
   --client-id ${FGA_CLIENT_ID} \
